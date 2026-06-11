@@ -78,15 +78,8 @@
             position: relative;
             background: #12080a;
         }
-        .card-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.5s ease;
-        }
-        .card:hover .card-img {
-            transform: scale(1.08);
-        }
+        .card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .card:hover .card-img { transform: scale(1.08); }
         .card-img-overlay {
             position: absolute;
             bottom: 0; left: 0; width: 100%; height: 50%;
@@ -157,7 +150,6 @@
             }
         });
 
-        // Fetch User Personal First Name
         function fetchUserData(uid) {
             database.ref('users/' + uid).once('value', snapshot => {
                 const data = snapshot.val();
@@ -167,7 +159,6 @@
             });
         }
 
-        // Fetch and render Dynamic Categories from Firebase
         function loadDynamicCategories() {
             database.ref('categories').on('value', snapshot => {
                 const categories = snapshot.val();
@@ -179,10 +170,10 @@
                         const cat = categories[catId];
                         const card = document.createElement('div');
                         card.className = "card";
-                        card.onclick = () => selectCategory(cat.id);
+                        card.onclick = () => selectCategory(cat.number); // Set category number as identifier
                         card.innerHTML = `
                             <div class="card-img-container">
-                                <img class="card-img" src="${cat.image}" alt="${cat.title}" onerror="this.src='https://placehold.co/600x400/12080a/ff2d55?text=💔+Broken+Heart'">
+                                <img class="card-img" src="${cat.image}" onerror="this.src='https://placehold.co/600x400/12080a/ff2d55?text=💔+Broken+Heart'">
                                 <div class="card-img-overlay"></div>
                             </div>
                             <div class="card-body">
@@ -193,20 +184,18 @@
                         grid.appendChild(card);
                     });
                 } else {
-                    grid.innerHTML = `<div class="loading-text">কোনো ক্যাটাগরি পাওয়া যায়নি! অনুগ্রহ করে অ্যাডমিন প্যানেল থেকে ক্যাটাগরি তৈরি করুন।</div>`;
+                    grid.innerHTML = `<div class="loading-text">কোনো ক্যাটাগরি পাওয়া যায়নি!</div>`;
                 }
             });
         }
 
-        function selectCategory(cat) {
-            sessionStorage.setItem('currentCategory', cat);
+        function selectCategory(catNumber) {
+            sessionStorage.setItem('currentCategory', catNumber);
             window.location.href = 'chat.html';
         }
 
         function logout() {
-            auth.signOut().then(() => {
-                window.location.href = 'index.html';
-            });
+            auth.signOut().then(() => window.location.href = 'index.html');
         }
 
         // Ambient Background
