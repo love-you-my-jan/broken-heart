@@ -158,13 +158,11 @@
             <button class="option-pill" onclick="window.location.href='home.html'"><i class="fa-solid fa-house"></i> হোম</button>
         </div>
 
-        <div class="chat-scroller" id="scroller">
-            <!-- চ্যাট ডায়লগ এখানে ডায়নামিকালি যুক্ত হবে -->
-        </div>
+        <div class="chat-scroller" id="scroller"></div>
 
         <div class="option-panel" id="optionPanel" style="display: none;">
-            <button class="option-pill" onclick="submitOption('হ্যাঁ')">হ্যাঁ (Yes)</button>
-            <button class="option-pill" onclick="submitOption('না')">না (No)</button>
+            <button class="option-pill" onclick="submitOption('হ্যাঁ')">হ্যাঁ</button>
+            <button class="option-pill" onclick="submitOption('না')">না</button>
         </div>
 
         <div class="input-bar">
@@ -189,9 +187,9 @@
         const database = firebase.database();
 
         let currentUser = null;
-        let userName = "বন্ধু"; // Fallback name
-        let categoryId = sessionStorage.getItem('currentCategory') || 'broken_life';
-        let categoryTitle = "কষ্টের কথা";
+        let userName = "বন্ধু"; 
+        let categoryNum = sessionStorage.getItem('currentCategory') || '1'; // Reads category number (e.g., '1')
+        let categoryTitle = "কষ্টের অনুভূতি";
         let firebaseQuestions = [];
         let currentQuestionIdx = 0;
         let currentQuestionId = "";
@@ -201,51 +199,48 @@
                 window.location.href = 'index.html';
             } else {
                 currentUser = user;
-                loadUserAndCategoryData();
+                loadData();
             }
         });
 
-        // 1. Load User First Name and Category Information dynamically
-        function loadUserAndCategoryData() {
-            // Load user first name
-            database.ref('users/' + currentUser.uid).once('value', userSnapshot => {
-                const userData = userSnapshot.val();
-                if (userData && userData.firstName) {
-                    userName = userData.firstName;
-                }
-                
-                // Load category info
-                database.ref('categories/' + categoryId).once('value', catSnapshot => {
-                    const catData = catSnapshot.val();
+        function loadData() {
+            // Fetch User First Name
+            database.ref('users/' + currentUser.uid).once('value', userSnap => {
+                const userData = userSnap.val();
+                if (userData && userData.firstName) userName = userData.firstName;
+
+                // Fetch Category Title using category number
+                database.ref('categories/' + categoryNum).once('value', catSnap => {
+                    const catData = catSnap.val();
                     if (catData && catData.title) {
                         categoryTitle = catData.title;
                         document.getElementById('chatHeaderTitle').innerHTML = `<i class="fa-solid fa-heart-crack"></i> মন-সঙ্গী: ${categoryTitle}`;
                     }
                     
-                    // Proceed to load questions
-                    loadCategoryQuestions();
+                    loadQuestions();
                 });
             });
         }
 
-        // 2. Load Questions dynamically from RTDB
-        function loadCategoryQuestions() {
-            database.ref('questions/' + categoryId).once('value', snapshot => {
-                const data = snapshot.val();
+        function loadQuestions() {
+            // Load questions under category number Node
+            database.ref('questions/' + categoryNum).once('value', snap => {
+                const data = snap.val();
                 if (data) {
-                    firebaseQuestions = Object.keys(data).map(key => ({
-                        id: key,
+                    // Sorting key names numerically (1, 2, 3...)
+                    const sortedKeys = Object.keys(data).sort((a, b) => Number(a) - Number(b));
+                    firebaseQuestions = sortedKeys.map(key => ({
+                        id: key, // Question Number (e.g. "1")
                         ...data[key]
                     }));
-                    
-                    // Welcome Message with Personalized Category Name
+
                     appendMsg(`হ্যালো ${userName}, আপনি "${categoryTitle}" ক্যাটাগরি বেছে নিয়েছেন। চলুন আপনার মনের অপ্রকাশিত আবেগগুলো নিয়ে একটু শান্ত মনে কথা বলি।`, 'ai');
                     setTimeout(askNextQuestion, 1800);
                 } else {
-                    // Fallback to basic questions if no questions exist in DB
+                    // Fallback Questions
                     firebaseQuestions = [
-                        { id: "fallback_1", questionText: "জীবনের এই সময়ে আপনি কি নিজেকে খুব অসহায় মনে করছেন?" },
-                        { id: "fallback_2", questionText: "এমন কেউ কি আছে যাকে অবচেতন মনে এখনো মিস করেন?" }
+                        { id: "1", questionText: "জীবনের এই সময়ে আপনি কি নিজেকে খুব অসহায় মনে করছেন?" },
+                        { id: "2", questionText: "এমন কেউ কি আছে যাকে অবচেতন মনে এখনো মিস করেন?" }
                     ];
                     appendMsg(`হ্যালো ${userName}, চলুন আপনার মন খারাপের অনুভূতি নিয়ে কথা বলা যাক।`, 'ai');
                     setTimeout(askNextQuestion, 1800);
@@ -253,13 +248,11 @@
             });
         }
 
-        // 3. Prompt next dynamic personalized question
         function askNextQuestion() {
             if (currentQuestionIdx < firebaseQuestions.length) {
                 const q = firebaseQuestions[currentQuestionIdx];
-                currentQuestionId = q.id;
+                currentQuestionId = q.id; // question number (e.g. "1")
                 
-                // Personalize the question dynamic text with user's actual first name
                 let formattedQuestion = q.questionText.replace(/{name}/g, userName);
                 if (!formattedQuestion.includes(userName)) {
                     formattedQuestion = `${userName}, ${formattedQuestion}`;
@@ -269,7 +262,7 @@
                 document.getElementById('optionPanel').style.display = 'flex';
                 currentQuestionIdx++;
             } else {
-                appendMsg(`${userName}, আপনার সাথে কথা বলে ভালো লাগলো। আপনার প্রতিটি দুঃখ ও বেদনার মুহূর্তগুলো কেটে গিয়ে নতুন সূর্য উঠুক। নিজের যত্ন নেবেন। ❤️`, 'ai');
+                appendMsg(`${userName}, আপনার সাথে কথা বলে অনেক ভালো লাগলো। দুঃখের কালো মেঘ কেটে আপনার জীবনে আসুক আলো। নিজের যত্ন নেবেন। ❤️`, 'ai');
                 document.getElementById('optionPanel').style.display = 'none';
             }
         }
@@ -287,10 +280,7 @@
             appendMsg(val, 'user');
             saveAnswer(val);
             document.getElementById('optionPanel').style.display = 'none';
-            
-            setTimeout(() => {
-                askNextQuestion();
-            }, 1200);
+            setTimeout(askNextQuestion, 1200);
         }
 
         function submitText() {
@@ -301,23 +291,19 @@
             appendMsg(val, 'user');
             saveAnswer(val);
             document.getElementById('optionPanel').style.display = 'none';
-
-            setTimeout(() => {
-                askNextQuestion();
-            }, 1500);
+            setTimeout(askNextQuestion, 1500);
         }
 
         function handleEnter(e) { if (e.key === 'Enter') submitText(); }
 
-        // 4. Record response in Realtime Database under user's response node
         function saveAnswer(answerText) {
             if (!currentUser) return;
-            const questionTextSaved = firebaseQuestions[currentQuestionIdx - 1]?.questionText || "Unknown Question";
+            const qText = firebaseQuestions[currentQuestionIdx - 1]?.questionText || "Unknown Question";
             
             database.ref('user_responses/' + currentUser.uid).push({
-                questionId: currentQuestionId,
-                questionText: questionTextSaved,
-                category: categoryId,
+                questionId: currentQuestionId, // Stores question number
+                questionText: qText,
+                categoryNumber: categoryNum, // Stores category number
                 categoryTitle: categoryTitle,
                 answer: answerText,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
