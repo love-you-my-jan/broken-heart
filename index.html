@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broken Heart AI - Entry Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;600;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase Legacy Compat Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #060203;
+            --panel-bg: rgba(18, 8, 10, 0.7);
+            --panel-border: rgba(255, 45, 85, 0.15);
+            --accent-color: #ff2d55;
+            --accent-glow: rgba(255, 45, 85, 0.4);
+            --text-primary: #f5f5f7;
+            --text-muted: #a09fa6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Hind Siliguri', 'Montserrat', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        #particleCanvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 480px;
+            padding: 30px;
+            margin: 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 45, 85, 0.05);
+        }
+
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 8px; text-shadow: 0 0 10px var(--accent-glow); }
+        .header p { color: var(--text-muted); font-size: 0.9rem; }
+
+        .form-group { margin-bottom: 15px; position: relative; }
+        .form-group i { position: absolute; left: 15px; top: 16px; color: var(--text-muted); }
+        .form-input {
+            width: 100%;
+            padding: 14px 15px 14px 45px;
+            background: rgba(10, 5, 6, 0.8);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+        .form-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px rgba(255, 45, 85, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--accent-color) 0%, #b31031 100%);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px var(--accent-glow);
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px var(--accent-glow); }
+
+        .toggle-link {
+            text-align: center; margin-top: 20px; font-size: 0.9rem; color: var(--text-muted);
+            cursor: pointer; transition: color 0.3s;
+        }
+        .toggle-link span { color: var(--accent-color); text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="container">
+        <!-- Form Header -->
+        <div class="header">
+            <h1 id="title">নিবন্ধন করুন 💔</h1>
+            <p id="subTitle">আপনার হৃদয়ের কথাগুলো সুরক্ষিত জায়গায় রাখুন</p>
+        </div>
+
+        <!-- Registration Form -->
+        <form id="authForm" onsubmit="handleAuth(event)">
+            <div class="form-group" id="firstNameGroup">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="firstName" class="form-input" placeholder="ফার্স্ট নেম" required>
+            </div>
+            <div class="form-group" id="lastNameGroup">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="lastName" class="form-input" placeholder="লাস্ট নেম" required>
+            </div>
+            <div class="form-group" id="dobGroup">
+                <i class="fa-solid fa-cake-candles"></i>
+                <input type="date" id="birthday" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <i class="fa-solid fa-phone"></i>
+                <input type="tel" id="phoneNumber" class="form-input" placeholder="মোবাইল নম্বর (১১ ডিজিট)" required>
+            </div>
+            <div class="form-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="password" class="form-input" placeholder="পাসওয়ার্ড" required>
+            </div>
+            <div class="form-group" id="confirmPasswordGroup">
+                <i class="fa-solid fa-shield-halved"></i>
+                <input type="password" id="confirmPassword" class="form-input" placeholder="পাসওয়ার্ড নিশ্চিত করুন" required>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">নিবন্ধন সম্পূর্ণ করুন</button>
+        </form>
+
+        <div class="toggle-link" onclick="toggleMode()">
+            <span id="toggleText">ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন</span>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjxAfqqg9i8C6G_O15y9NjkapVaLhpBlc",
+            authDomain: "fir-1ef88.firebaseapp.com",
+            databaseURL: "https://fir-1ef88-default-rtdb.firebaseio.com",
+            projectId: "fir-1ef88",
+            storageBucket: "fir-1ef88.firebasestorage.app",
+            messagingSenderId: "564144231731",
+            appId: "1:564144231731:web:d49ddc8a7ad87ecb311a46"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        let isLoginMode = false;
+
+        function toggleMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('title').innerText = isLoginMode ? "লগইন করুন 💔" : "নিবন্ধন করুন 💔";
+            document.getElementById('subTitle').innerText = isLoginMode ? "ফিরে আসার জন্য ধন্যবাদ" : "আপনার হৃদয়ের কথাগুলো সুরক্ষিত জায়গায় রাখুন";
+            document.getElementById('submitBtn').innerText = isLoginMode ? "লগইন করুন" : "নিবন্ধন সম্পূর্ণ করুন";
+            document.getElementById('toggleText').innerHTML = isLoginMode ? "অ্যাকাউন্ট নেই? <span>নিবন্ধন করুন</span>" : "ইতিমধ্যে অ্যাকাউন্ট আছে? <span>লগইন করুন</span>";
+            
+            // Toggle element displays
+            const displayStyle = isLoginMode ? 'none' : 'block';
+            document.getElementById('firstNameGroup').style.display = displayStyle;
+            document.getElementById('lastNameGroup').style.display = displayStyle;
+            document.getElementById('dobGroup').style.display = displayStyle;
+            document.getElementById('confirmPasswordGroup').style.display = displayStyle;
+
+            // Remove/Add 'required' constraint based on state
+            const reqState = !isLoginMode;
+            document.getElementById('firstName').required = reqState;
+            document.getElementById('lastName').required = reqState;
+            document.getElementById('birthday').required = reqState;
+            document.getElementById('confirmPassword').required = reqState;
+        }
+
+        function handleAuth(event) {
+            event.preventDefault();
+            const phone = document.getElementById('phoneNumber').value.trim();
+            const pass = document.getElementById('password').value;
+            
+            // Firebase Auth needs formatted email, converting phone format to virtual email
+            const simulatedEmail = `${phone}@brokenheart.ai`;
+
+            if (isLoginMode) {
+                auth.signInWithEmailAndPassword(simulatedEmail, pass)
+                    .then((userCredential) => {
+                        window.location.href = 'home.html';
+                    })
+                    .catch((error) => {
+                        alert("ভুল নম্বর অথবা পাসওয়ার্ড দেওয়া হয়েছে।");
+                    });
+            } else {
+                const fName = document.getElementById('firstName').value.trim();
+                const lName = document.getElementById('lastName').value.trim();
+                const dob = document.getElementById('birthday').value;
+                const confirmPass = document.getElementById('confirmPassword').value;
+
+                if (pass !== confirmPass) {
+                    alert("পাসওয়ার্ড দুটি মেলেনি!");
+                    return;
+                }
+
+                auth.createUserWithEmailAndPassword(simulatedEmail, pass)
+                    .then((userCredential) => {
+                        const user = userCredential.user;
+                        // Save extra fields into Realtime Database
+                        database.ref('users/' + user.uid).set({
+                            firstName: fName,
+                            lastName: lName,
+                            birthday: dob,
+                            phoneNumber: phone,
+                            password: pass, // Storing temporarily for admin panel accessibility requirement
+                            registeredAt: firebase.database.ServerValue.TIMESTAMP
+                        }).then(() => {
+                            window.location.href = 'home.html';
+                        });
+                    })
+                    .catch((error) => {
+                        alert("ত্রুটি: " + error.message);
+                    });
+            }
+        }
+
+        // Particle Background Logic
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function createParticle() {
+            return {
+                x: Math.random() * canvas.width,
+                y: canvas.height + 50,
+                speedY: -(0.5 + Math.random() * 1),
+                speedX: (Math.random() - 0.5) * 0.3,
+                size: 10 + Math.random() * 15,
+                opacity: 0.2 + Math.random() * 0.4
+            };
+        }
+
+        for (let i = 0; i < 30; i++) particles.push(createParticle());
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, idx) => {
+                p.y += p.speedY;
+                p.x += p.speedX;
+                if (p.y < -50) particles[idx] = createParticle();
+                ctx.save();
+                ctx.globalAlpha = p.opacity;
+                ctx.font = `${p.size}px Arial`;
+                ctx.fillText('💔', p.x, p.y);
+                ctx.restore();
+            });
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
