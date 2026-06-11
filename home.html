@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broken Heart AI - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #060203;
+            --panel-bg: rgba(18, 8, 10, 0.7);
+            --panel-border: rgba(255, 45, 85, 0.15);
+            --accent-color: #ff2d55;
+            --accent-glow: rgba(255, 45, 85, 0.4);
+            --text-primary: #f5f5f7;
+            --text-muted: #a09fa6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Hind Siliguri', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            padding: 40px 20px;
+        }
+
+        #particleCanvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; pointer-events: none;
+        }
+
+        .header { text-align: center; margin-bottom: 50px; z-index: 10; max-width: 600px; }
+        .header h1 { font-size: 2.2rem; margin-bottom: 10px; text-shadow: 0 0 12px var(--accent-glow); }
+        .header p { color: var(--text-muted); font-size: 1.05rem; line-height: 1.6; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 960px;
+            z-index: 10;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            overflow: hidden;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            flex-direction: column;
+        }
+        .card:hover {
+            transform: translateY(-8px);
+            border-color: var(--accent-color);
+            box-shadow: 0 10px 25px rgba(255, 45, 85, 0.25);
+        }
+
+        .card-img-container {
+            width: 100%;
+            height: 160px;
+            overflow: hidden;
+            position: relative;
+            background: #12080a;
+        }
+        .card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        .card:hover .card-img {
+            transform: scale(1.08);
+        }
+        .card-img-overlay {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 50%;
+            background: linear-gradient(to top, rgba(18, 8, 10, 1), transparent);
+        }
+
+        .card-body {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .card-title { font-size: 1.25rem; margin-bottom: 8px; font-weight: 700; color: var(--text-primary); }
+        .card-desc { color: var(--text-muted); font-size: 0.88rem; line-height: 1.5; }
+
+        .logout-btn {
+            margin-top: 40px;
+            padding: 10px 25px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--panel-border);
+            color: var(--text-muted);
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover { background: var(--accent-color); color: white; border-color: var(--accent-color); }
+        .loading-text { text-align: center; font-size: 1.1rem; color: var(--text-muted); grid-column: 1/-1; }
+    </style>
+</head>
+<body>
+
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="header">
+        <h1 id="userGreeting">স্বাগতম 💔</h1>
+        <p>জীবনের কোন কষ্টটি আপনাকে আজ নিঃসঙ্গ করে দিয়েছে? নিচের যেকোনো একটি ক্যাটাগরি নির্বাচন করুন।</p>
+    </div>
+
+    <div class="grid" id="categoryGrid">
+        <div class="loading-text">ক্যাটাগরি লোড হচ্ছে...</div>
+    </div>
+
+    <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> লগআউট</button>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjxAfqqg9i8C6G_O15y9NjkapVaLhpBlc",
+            authDomain: "fir-1ef88.firebaseapp.com",
+            databaseURL: "https://fir-1ef88-default-rtdb.firebaseio.com",
+            projectId: "fir-1ef88",
+            storageBucket: "fir-1ef88.firebasestorage.app",
+            messagingSenderId: "564144231731",
+            appId: "1:564144231731:web:d49ddc8a7ad87ecb311a46"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                fetchUserData(user.uid);
+                loadDynamicCategories();
+            }
+        });
+
+        // Fetch User Personal First Name
+        function fetchUserData(uid) {
+            database.ref('users/' + uid).once('value', snapshot => {
+                const data = snapshot.val();
+                if (data && data.firstName) {
+                    document.getElementById('userGreeting').innerText = `স্বাগতম, ${data.firstName} 💔`;
+                }
+            });
+        }
+
+        // Fetch and render Dynamic Categories from Firebase
+        function loadDynamicCategories() {
+            database.ref('categories').on('value', snapshot => {
+                const categories = snapshot.val();
+                const grid = document.getElementById('categoryGrid');
+                grid.innerHTML = "";
+
+                if (categories && Object.keys(categories).length > 0) {
+                    Object.keys(categories).forEach(catId => {
+                        const cat = categories[catId];
+                        const card = document.createElement('div');
+                        card.className = "card";
+                        card.onclick = () => selectCategory(cat.id);
+                        card.innerHTML = `
+                            <div class="card-img-container">
+                                <img class="card-img" src="${cat.image}" alt="${cat.title}" onerror="this.src='https://placehold.co/600x400/12080a/ff2d55?text=💔+Broken+Heart'">
+                                <div class="card-img-overlay"></div>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-title">${cat.title}</div>
+                                <div class="card-desc">${cat.desc}</div>
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                    });
+                } else {
+                    grid.innerHTML = `<div class="loading-text">কোনো ক্যাটাগরি পাওয়া যায়নি! অনুগ্রহ করে অ্যাডমিন প্যানেল থেকে ক্যাটাগরি তৈরি করুন।</div>`;
+                }
+            });
+        }
+
+        function selectCategory(cat) {
+            sessionStorage.setItem('currentCategory', cat);
+            window.location.href = 'chat.html';
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        }
+
+        // Ambient Background
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function createParticle() {
+            return {
+                x: Math.random() * canvas.width,
+                y: canvas.height + 50,
+                speedY: -(0.5 + Math.random() * 0.8),
+                speedX: (Math.random() - 0.5) * 0.2,
+                size: 8 + Math.random() * 12,
+                opacity: 0.15 + Math.random() * 0.3
+            };
+        }
+        for (let i = 0; i < 20; i++) particles.push(createParticle());
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, idx) => {
+                p.y += p.speedY; p.x += p.speedX;
+                if (p.y < -50) particles[idx] = createParticle();
+                ctx.save();
+                ctx.globalAlpha = p.opacity;
+                ctx.font = `${p.size}px Arial`;
+                ctx.fillText('💔', p.x, p.y);
+                ctx.restore();
+            });
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
